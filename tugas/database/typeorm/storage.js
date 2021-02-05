@@ -2,6 +2,20 @@ const fs = require('fs');
 const path = require('path');
 const mime = require('mime-types');
 const { Writable } = require('stream');
+const { Client } = require('minio');
+
+/**
+ * set MINIO_ROOT_USER=local-minio
+ * set MINIO_ROOT_PASSWORD=pass-minio
+ */
+
+const client = new Client({
+  endPoint: '127.0.0.1',
+  port: 9000,
+  useSSL: false,
+  accessKey: 'local-minio',
+  secretKey: 'pass-minio',
+});
 
 function randomFileName(mimetype) {
   return (
@@ -18,26 +32,28 @@ function upload(obj, fieldname, file, mimetype, abort) {
     case 'photo':
       {
         const destname = randomFileName(mimetype);
-        const store = fs.createWriteStream(
-          path.resolve(__dirname, `./file-storage/${destname}`)
-        );
-        file.on('error', abort);
-        store.on('error', abort);
-        file.pipe(store);
         obj.photo = destname;
+        file.on('error', abort);
+        client.putObject('photo', destname, file, (err, etag) => {
+          if (err) {
+            console.log(err);
+            abort();
+          }
+        });
       }
       break;
     case 'attach':
       {
         const destname = randomFileName(mimetype);
-        const store = fs.createWriteStream(
-          path.resolve(__dirname, `./file-storage/${destname}`)
-        );
-        file.on('error', abort);
-        store.on('error', abort);
-        file.pipe(store);
         obj.attach = destname;
-      }
+        file.on('error', abort);
+        client.putObject('attach', destname, file, (err, etag) => {
+          if (err) {
+            console.log(err);
+            abort();
+          }
+        })
+      };
       break;
     default: {
       const noop = new Writable({
