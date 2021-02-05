@@ -59,10 +59,11 @@ function readDataWorkerDB() {
   return worker;
 }
 async function deleteDataDB(con, id) {
-  const worker = con
+  const worker = await con
     .createQueryBuilder()
-    .delete(Worker)
-    .where('id = :id', { id: id })
+    .delete()
+    .from(Worker)
+    .where("id = :id", { id: 1 })
     .execute();
   return worker;
 }
