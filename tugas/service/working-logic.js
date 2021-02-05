@@ -33,7 +33,6 @@ async function findWorker(id) {
 async function del(id) {
   try {
       const worker = await deleteData(id);
-      return;
   } catch (err) {
       throw err;
   }
