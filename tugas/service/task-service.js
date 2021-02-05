@@ -2,7 +2,7 @@ const Busboy = require('busboy');
 const url = require('url');
 const { register, taskSelesai, taskBatal, ERROR_REGISTER_DATA_INVALID, list } = require('./task-logic');
 const { upload } = require('../database/typeorm/storage');
-
+const { loggingMsg } = require('./performance-service')
 
 function storeTaskService(req, res) {
   const busboy = new Busboy({ headers: req.headers });
@@ -18,6 +18,7 @@ function storeTaskService(req, res) {
     req.unpipe(busboy);
     if (!req.aborted) {
       res.statusCode = 413;
+      loggingMsg('Failed Store Data', res.statusCode);
       res.end();
     }
   }
@@ -36,18 +37,21 @@ function storeTaskService(req, res) {
   });
 
   busboy.on('finish', async () => {
-      try {
-        const task = await register(data);
-        await res.write(JSON.stringify(task));
-      } catch (err) {
-        if (err === ERROR_REGISTER_DATA_INVALID) {
-          res.statusCode = 401;
-        } else {
-          res.statusCode = 500;
-        }
-        res.write(err);
+    try {
+      const task = await register(data);
+      await res.write(JSON.stringify(task));
+      loggingMsg('Succes Store Data', res.statusCode);
+    } catch (err) {
+      if (err === ERROR_REGISTER_DATA_INVALID) {
+        res.statusCode = 401;
+        loggingMsg(ERROR_REGISTER_DATA_INVALID, res.statusCode);
+      } else {
+        res.statusCode = 500;
+        loggingMsg('Failed store Data', res.statusCode);
       }
-      await res.end();
+      res.write(err);
+    }
+    await res.end();
   });
 
   req.on('aborted', abort);
@@ -62,6 +66,7 @@ async function upTaskService(req, res) {
   if (!id) {
     res.statusCode = 401;
     res.write('parameter id tidak ditemukan');
+    loggingMsg('Fail Update Task ID salah', res.statusCode);
     res.end();
     return;
   }
@@ -69,19 +74,23 @@ async function upTaskService(req, res) {
     await taskSelesai(id);
     res.statusCode = 200;
     res.write(`Update ID dengan ${id}`);
+    loggingMsg('Succes Update Task', res.statusCode);
     res.end();
   } catch (err) {
     if (err === ERROR_WORKER_NOT_FOUND) {
       res.statusCode = 404;
       res.write(err);
+      loggingMsg('Fail Update task Task', res.statusCode);
       res.end();
       return;
     }
     res.statusCode = 500;
+    loggingMsg('Fail Update Task', res.statusCode);
     res.end();
     return;
   }
 }
+
 async function softDeleteTaskService(req, res) {
   const uri = url.parse(req.url, true);
   const id = uri.query['id'];
@@ -95,15 +104,18 @@ async function softDeleteTaskService(req, res) {
     await taskBatal(id);
     res.statusCode = 200;
     res.write(`batalkan task dengan ${id}`);
+    loggingMsg('Succes Batalkan Task', res.statusCode);
     res.end();
   } catch (err) {
     if (err === ERROR_WORKER_NOT_FOUND) {
       res.statusCode = 404;
       res.write(err);
+      loggingMsg('Worker tidak tidemukan pada Task', res.statusCode);
       res.end();
       return;
     }
     res.statusCode = 500;
+    loggingMsg('Fail Batalkan Task', res.statusCode);
     res.end();
     return;
   }
@@ -116,6 +128,7 @@ async function getTaskService(req, res) {
   const data = JSON.stringify(value);
   res.statusCode = 200;
   res.write(data);
+  loggingMsg('GetTaskService', res.statusCode);
   res.end();
 }
 
